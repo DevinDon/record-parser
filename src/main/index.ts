@@ -1,93 +1,118 @@
 import { readFileSync } from 'fs';
 
 export interface Record {
-  questioner: string;
+  user: string;
   time: Date;
   question: string;
   answers: Answer[];
 }
 
 export interface Answer {
-  who: string;
+  user: string;
   content: string;
   time: Date;
 }
 
-export function getDate(time: string, date: string = '2020-07-26') {
-  return new Date(date + ' ' + time);
-}
+export class RecordParser {
 
-const source = readFileSync('source.md').toString();
+  static REG_USER = /(.+)\s(\d+:\d+)\s.M/;
 
-const texts = source.split('---').map(text => text.trim());
+  private readonly date: string;
+  private readonly source: string;
+  private readonly sections: string[];
 
-const regWho = /(.+)\s(\d+:\d+)\s.M/;
+  constructor(path: string) {
+    this.date = (path.match(/(\d{4}-\d{2}-\d{2})/) ?? { 1: '2020-08-01' })[1];
+    this.source = readFileSync(path).toString();
+    this.sections = this.source.split('---').map(section => section.trim());
+  }
 
-function parserRecord(text: string) {
+  getDate(time: string, date: string = this.date) {
+    return new Date(date + ' ' + time);
+  }
 
-  const record: Record = {
-    questioner: '',
-    question: '',
-    time: new Date(),
-    answers: []
-  };
+  parse() {
 
-  const lines = text.split('\n').map(v => v.trim());
-  let answer: Answer = { who: '', content: '', time: new Date() };
+    /** 所有回答记录 */
+    const records: Record[] = [];
 
-  let indexOfWho = 0;
+    // 遍历所有问题块
+    for (const section of this.sections) {
 
-  for (const line of lines) {
 
-    // 是用户信息栏
-    if (regWho.test(line)) {
-      // 获取用户和时间
-      const [temp1, who, time] = line.match(regWho) ?? [];
-      // 用户序号 + 1，用于区分提问者和回答者
-      indexOfWho++;
-      // 如果存在回答，那么说明上一条回答已经结束，存入数组
-      if (answer.who) {
-        record.answers.push(answer);
+      /** 用户，1 为提问者，其余为回答者 */
+      let indexOfUser = 0;
+
+      /** 记录，缓存 */
+      const record: Record = {
+        user: '',
+        question: '',
+        time: new Date(),
+        answers: []
+      };
+
+      /** 回答，缓存 */
+      let answer: Answer = { user: '', content: '', time: new Date() };
+
+      /** 分割为行 */
+      const lines = section.split('\n').map(line => line.trim());
+
+      for (const line of lines) {
+
+        // 是用户信息行
+        if (RecordParser.REG_USER.test(line)) {
+          // 获取用户和时间
+          const [temp, user, time] = line.match(RecordParser.REG_USER) ?? [];
+          // 用户标记 + 1
+          indexOfUser++;
+
+          // 如果回答存在，说明此回答已经结束，可以存入数组
+          if (answer.user) {
+            record.answers.push(answer);
+          }
+          // 清空缓存
+          answer = { user: '', content: '', time: new Date() };
+
+          switch (indexOfUser) {
+            case 1:
+              record.user = user.trim();
+              record.time = this.getDate(time);
+              break;
+            default:
+              answer.user = user.trim();
+              answer.time = this.getDate(time);
+              break;
+          }
+
+        } else { // 填充内容
+
+          // 判断是提问者还是回答者
+          switch (indexOfUser) {
+            case 1: // 提问者
+              record.question += line + '\n';
+              break;
+            default: // 回答者
+              answer.content += line + '\n';
+              break;
+          }
+
+        }
+
       }
-      // 清空回答
-      answer = { who: '', content: '', time: new Date() };
-      // 判断是提问者还是回答者
-      switch (indexOfWho) {
-        case 1:
-          record.questioner = who.trim();
-          record.time = getDate(time);
-          break;
-        default:
-          answer.who = who.trim();
-          answer.time = getDate(time);
-          break;
+
+      // 清洗数据
+      record.question = record.question.trim();
+      for (const answer of record.answers) {
+        answer.content = answer.content.trim();
       }
-    } else { // 填充问题
-      // 判断是提问者还是回答者
-      switch (indexOfWho) {
-        case 1: // 提问者
-          record.question += line + '\n';
-          break;
-        default: // 回答者
-          answer.content += line + '\n';
-          break;
-      }
+
+      // 存入记录数据
+      records.push(record);
+
     }
 
-  }
+    return records;
 
-  // 清洗数据
-  record.question = record.question.trim();
-  for (const answer of record.answers) {
-    answer.content = answer.content.trim();
   }
-
-  return record;
 
 }
-
-const records = texts.map(parserRecord);
-
-console.log(JSON.stringify(records));
-
-// 10:15 AM
