@@ -100,6 +100,11 @@ export class RecordParser {
 
       }
 
+      // 本块问答结束
+      record.answers.push(answer);
+      // 清空缓存
+      answer = { user: '', content: '', time: new Date() };
+
       // 清洗数据
       record.question = record.question.trim();
       for (const answer of record.answers) {
