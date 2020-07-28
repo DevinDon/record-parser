@@ -1,15 +1,16 @@
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'fs';
 import { RecordParser } from '../main';
 
-const allRecords = readdirSync('temp')
+const allArchives = readdirSync('temp')
   .map(file => ({ file, records: new RecordParser(`temp/${file}`).parse() }));
 
 if (!existsSync('dist')) {
   mkdirSync('dist');
 }
 
-writeFileSync('dist/all-records.json', JSON.stringify(allRecords));
+writeFileSync('dist/all-archives.json', JSON.stringify(allArchives));
 
-allRecords.forEach(
-  record => writeFileSync(`dist/${record.file}.json`, JSON.stringify(record.records))
-);
+allArchives
+  .forEach(
+    record => writeFileSync(`dist/${record.file.slice(0, -3)}.json`, JSON.stringify(record.records))
+  );
