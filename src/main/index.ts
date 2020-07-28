@@ -62,7 +62,7 @@ export class RecordParser {
         // 是用户信息行
         if (RecordParser.REG_USER.test(line)) {
           // 获取用户和时间
-          const [temp, user, time] = line.match(RecordParser.REG_USER) ?? [];
+          const [_, user, time] = line.match(RecordParser.REG_USER)?.map(text => text.trim()) ?? [];
           // 用户标记 + 1
           indexOfUser++;
 
@@ -75,11 +75,11 @@ export class RecordParser {
 
           switch (indexOfUser) {
             case 1:
-              record.user = user.trim();
+              record.user = user;
               record.time = this.getDate(time);
               break;
             default:
-              answer.user = user.trim();
+              answer.user = (/你/.test(user) && '小郁') || (/.*小郁.*/.test(user) && '小郁') || (/.*小天.*/.test(user) && '小天') || user;
               answer.time = this.getDate(time);
               break;
           }
