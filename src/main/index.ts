@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 
 export interface Record {
   user: string;
-  time: Date;
+  time: string;
   question: string;
   answers: Answer[];
 }
@@ -10,7 +10,7 @@ export interface Record {
 export interface Answer {
   user: string;
   content: string;
-  time: Date;
+  time: string;
 }
 
 export class RecordParser {
@@ -28,7 +28,8 @@ export class RecordParser {
   }
 
   getDate(time: string, date: string = this.date) {
-    return new Date(date + ' ' + time);
+    // return new Date(date + ' ' + time);
+    return date + ' ' + time;
   }
 
   parse() {
@@ -47,12 +48,12 @@ export class RecordParser {
       const record: Record = {
         user: '',
         question: '',
-        time: new Date(),
+        time: '',
         answers: []
       };
 
       /** 回答，缓存 */
-      let answer: Answer = { user: '', content: '', time: new Date() };
+      let answer: Answer = { user: '', content: '', time: '' };
 
       /** 分割为行 */
       const lines = section.split('\n').map(line => line.trim());
@@ -71,7 +72,7 @@ export class RecordParser {
             record.answers.push(answer);
           }
           // 清空缓存
-          answer = { user: '', content: '', time: new Date() };
+          answer = { user: '', content: '', time: '' };
 
           switch (indexOfUser) {
             case 1:
@@ -100,10 +101,12 @@ export class RecordParser {
 
       }
 
-      // 本块问答结束
-      record.answers.push(answer);
+      // 如果回答存在，说明此回答已经结束，可以存入数组
+      if (answer.user) {
+        record.answers.push(answer);
+      }
       // 清空缓存
-      answer = { user: '', content: '', time: new Date() };
+      answer = { user: '', content: '', time: '' };
 
       // 清洗数据
       record.question = record.question.trim();
